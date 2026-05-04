@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <licenses>
+        <license>
+            <name>MIT-0</name>
+            <url>https://github.com/aws/mit-0</url>
+        </license>
+    </licenses>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.11</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.example</groupId>
+    <artifactId>sapsupplychainagent-a2a-multi-agent</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>sapsupplychainagent-with-agentcore-a2a-multi-agent</name>
+    <description>SAP Supply Chain Multi-Agent A2A System — 5 independently deployable agents communicating via A2A protocol (JSON-RPC 2.0) on AWS AgentCore</description>
+
+    <modules>
+        <module>a2a-common</module>
+        <module>orchestrator-agent</module>
+        <module>sap-query-agent</module>
+        <module>sap-execute-format-agent</module>
+        <module>date-weather-agent</module>
+        <module>mcp-tools-agent</module>
+    </modules>
+
+    <properties>
+        <java.version>25</java.version>
+        <spring-ai.version>1.1.2</spring-ai.version>
+        <sap-ai-sdk.version>1.16.0</sap-ai-sdk.version>
+        <sap-cloud-sdk.version>5.26.0</sap-cloud-sdk.version>
+        <spring-ai-agentcore.version>1.0.0</spring-ai-agentcore.version>
+        <opentelemetry.version>1.47.0</opentelemetry.version>
+        <aws-sdk.version>2.40.3</aws-sdk.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.sap.cloud.sdk</groupId>
+                <artifactId>sdk-bom</artifactId>
+                <version>${sap-cloud-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springaicommunity</groupId>
+                <artifactId>spring-ai-agentcore-bom</artifactId>
+                <version>${spring-ai-agentcore.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Internal module -->
+            <dependency>
+                <groupId>com.example</groupId>
+                <artifactId>a2a-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+</project>

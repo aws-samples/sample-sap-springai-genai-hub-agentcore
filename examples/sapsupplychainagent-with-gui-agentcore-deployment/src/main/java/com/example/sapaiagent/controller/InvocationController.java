@@ -1,0 +1,98 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: MIT-0
+ */
+package com.example.sapaiagent.controller;
+
+import com.example.sapaiagent.model.InvocationRequest;
+import com.example.sapaiagent.service.SAPAIOrchestrationService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springaicommunity.agentcore.annotation.AgentCoreInvocation;
+import org.springaicommunity.agentcore.context.AgentCoreContext;
+import org.springaicommunity.agentcore.context.AgentCoreHeaders;
+import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+
+@RestController
+public class InvocationController {
+
+    private static final Logger log = LoggerFactory.getLogger(InvocationController.class);
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final String ANONYMOUS_USER = "ANONYMOUS_USER";
+
+    private final SAPAIOrchestrationService orchestrationService;
+
+    public InvocationController(SAPAIOrchestrationService orchestrationService) {
+        this.orchestrationService = orchestrationService;
+        log.info("InvocationController initialized with orchestration service");
+    }
+
+    @AgentCoreInvocation
+    public Flux<String> handleUserPrompt(InvocationRequest request, AgentCoreContext agentCoreContext) {
+
+        log.info("=== Invocation received ===");
+        log.info("Prompt: {}", request.prompt());
+
+        // Extract user identity from JWT token in Authorization header
+        String userId = extractUserIdFromContext(agentCoreContext);
+        log.info("User Id: {}", userId);
+
+        return Flux.defer(() -> {
+            try {
+                String result = orchestrationService.chatStream(request.prompt(), userId).blockFirst();
+                return Flux.just(result);
+            } catch (Exception e) {
+                log.error("=== INVOCATION FAILED === Prompt: {}, UserId: {}",
+                    request.prompt(), userId, e);
+                return Flux.just("I apologize, but I encountered an error processing your request. Please try again.");
+            }
+        });
+    }
+
+    private String extractUserIdFromContext(AgentCoreContext context) {
+
+        // AgentCore's JWT authorizer injects this header from the validated token.
+        // It is the most reliable user identifier — use it when available.
+        String userId = context.getHeader(AgentCoreHeaders.USER_ID);
+        if (userId != null && !userId.isBlank()) {
+            log.info("User ID from AgentCore header: {}", userId);
+            return userId;
+        }
+
+        // Fallback: parse the sub claim from the Cognito JWT in the Authorization header.
+        // Required for local testing (no AgentCore JWT authorizer) and as a safety net.
+        String authHeader = context.getHeader(AgentCoreHeaders.AUTHORIZATION);
+        log.info("Authorization header present: {}", authHeader != null);
+
+        if (authHeader == null) return ANONYMOUS_USER;
+
+        if (authHeader.startsWith(BEARER_PREFIX)) {
+            String token = authHeader.substring(BEARER_PREFIX.length());
+            try {
+                String[] parts = token.split("\\.");
+                if (parts.length > 1) {
+                    // JWT payloads use base64url WITHOUT padding — add padding before decoding
+                    String base64Payload = parts[1];
+                    int padding = (4 - base64Payload.length() % 4) % 4;
+                    base64Payload = base64Payload + "=".repeat(padding);
+                    String payload = new String(java.util.Base64.getUrlDecoder().decode(base64Payload));
+                    // Extract the stable 'sub' claim using Jackson (already on classpath via Spring Boot)
+                    JsonNode node = new ObjectMapper().readTree(payload);
+                    if (node.has("sub")) {
+                        String sub = node.get("sub").asText();
+                        log.info("User ID from JWT sub claim: {}", sub);
+                        return sub;
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to parse JWT: {}", e.getMessage());
+            }
+            return ANONYMOUS_USER;
+        }
+        // Non-Bearer header (e.g. plain username in local testing) — use as-is
+        return authHeader;
+    }
+}

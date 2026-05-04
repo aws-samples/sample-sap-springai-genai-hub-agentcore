@@ -1,0 +1,14 @@
+.git
+.idea
+.mvn
+deploy
+*.md
+*.cmd
+mvnw
+mvnw.cmd
+.gitignore
+.gitattributes
+.DS_Store
+**/src
+**/pom.xml
+pom.xml
